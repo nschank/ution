@@ -132,5 +132,4 @@ def main():
 		practice(password)
 	return 0
 	
-
 main()
