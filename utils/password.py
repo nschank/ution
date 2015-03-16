@@ -77,7 +77,7 @@ def get_settings():
 	parser.add_argument("-!", dest="specweight", nargs="?", default=0, const=1, type=int, help="Sets the weight of special characters. Default is not to include them.")
 	parser.add_argument("-a", dest="lowweight", nargs="?", default=5, const=5, type=int, help="Sets the weight of lowercase letters. Default weight is 5.")
 	parser.add_argument("-A", dest="capweight", nargs="?", default=5, const=5, type=int, help="Sets the weight of uppercase letters. Default weight is 5.")
-	parser.add_argument("-j", dest="reject", action="store_true", default=False, help="Activates rejection mode, w8here you press enter to get a new password")
+	parser.add_argument("-j", dest="reject", action="store_true", default=False, help="Activates rejection mode, where you press enter to get a new password")
 	parser.add_argument("-l", dest="length", action="store", default=8, type=int, help="The length of the password to produce. Default is 8.")
 	parser.add_argument("-p", action="store_true", dest="practice", default=False, help="Turns on practice mode. Exit by typing 'exit'")
 	parser.add_argument("-s", dest="spaceweight", nargs="?", default=0, const=1, type=int, help="Sets the weight of spaces. Default is not to include them.")

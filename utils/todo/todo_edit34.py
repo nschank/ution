@@ -55,7 +55,7 @@ def main():
 			del listfile[info.rm]
 			rewrite(filename,listfile)
 	elif info.rmi:
-		rem = ' '.join(info.movierm) + '\n'
+		rem = ' '.join(info.rmi) + '\n'
 		if rem in listfile:
 			listfile.remove(rem)
 			print(rem[:-1], "removed from list.")
