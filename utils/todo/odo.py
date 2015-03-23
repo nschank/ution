@@ -158,8 +158,8 @@ def print_item(item, num, verbose=False):
 			
 def rewrite(filename, data):
 	data.sort()
-	with open(filename, 'w+b') as f:
-		pickle.dump(data, f)
+	with open(filename, 'wb') as f:
+		pickle.dump(data, f, protocol=0)
 
 def parse():
 	"""Parses command-line arguments using argparse and returns an object containing runtime information."""
