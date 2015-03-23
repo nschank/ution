@@ -158,7 +158,7 @@ def print_item(item, num, verbose=False):
 			
 def rewrite(filename, data):
 	data.sort()
-	with open(filename, 'wb') as f:
+	with open(filename, 'w+b') as f:
 		pickle.dump(data, f)
 
 def parse():
