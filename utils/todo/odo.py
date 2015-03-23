@@ -98,6 +98,7 @@ def do_hide(data, settings):
 	rewrite(settings.filename, data)
 	
 def do_print(data, settings=Namespace(time=None,important=False, categories=[], verbose=False)):
+	settings.categories = [category.upper() for category in settings.categories]
 	duedate = None
 	if settings.time is not None:
 		try:
@@ -107,24 +108,34 @@ def do_print(data, settings=Namespace(time=None,important=False, categories=[], 
 	
 	printed = False
 	if settings.verbose:
-		print ('{:2s}  |  {:>5s} {!s:<35s}\t{} | {:^13s}{}'.format(" #","CAT ","ITEM", "IMP", "START", "DUE"))
-		print ('{:-^90s}'.format(""))
+		print ('+====+' + '='*43 + '+' + '='*26 + '+')
+		print ('| {:2s} |  {:>5s} {!s:<30s} {} | {:^11s}  {:^11s} |'.format(" #","CAT ","ITEM", "IMP", "START", "DUE"))
+		print ('+====+' + '='*43 + '+' + '='*26 + '+')
 	else:
-		print ('{:2s}  |  {:>5s} {!s:<35s}\t{} | {}'.format(" #","CAT ","ITEM", "IMP", "DUE"))
-		print ('{:-^80s}'.format(""))
+		print ('+====+' + '='*43 + '+' + '='*13 + '+')
+		print ('| {:2s} |  {:>5s} {!s:<30s} {} | {:^11s} |'.format(" #","CAT ","ITEM", "IMP", "DUE"))
+		print ('+====+' + '='*43 + '+' + '='*13 + '+')
 	for num,item in enumerate(data):
 		if (settings.important and not check_important(item)) or \
 			(duedate is not None and not check_before(item,duedate)) or \
 			(len(settings.categories) > 0 and \
 				item.category not in settings.categories and not \
-				("none" in settings.categories and item.category is None)) or \
+				("NONE" in settings.categories and item.category is None)) or \
 			(not settings.verbose and not check_past(item)):
 				continue
 		else:
 			printed = True
 			print_item(item,num, settings.verbose)
-	if not printed:
-		print ('{:^85s}'.format(" empty "))
+	
+		
+	if settings.verbose:
+		if not printed:
+			print ('| {:^73s} |'.format(""))
+		print ('+' + '='*75 + '+')
+	else:
+		if not printed:
+			print ('| {:^60s} |'.format(""))
+		print ('+' + '='*62 + '+')
 	
 def do_rm(data, settings):
 	settings.indices.sort()
@@ -147,14 +158,19 @@ def getdata(filename):
 			
 def print_item(item, num, verbose=False):
 	duestr = item.duedate.strftime("%a %d %b") if item.duedate is not None else ""
-	imp = '!' if item.important else ' '
-	cat = "{!s:<4s}".format(item.category.upper())+':' if item.category is not None else "     "
+	imp = '*' if item.important else ' '
+	cat = "{!s:>4s}".format(item.category.upper())+':' if item.category is not None else "     "
 	
 	if verbose:
-		stdstr = item.startdate.strftime("%a %d %b - ") if item.startdate is not None else ""
-		print ('{:2d}  |  {} {!s:<35s}\t{}   | {:^13s}{}'.format(num,cat,item.value, imp, stdstr, duestr))
+		stdstr = item.startdate.strftime("%a %d %b") if item.startdate is not None else ""
+		dash = " - " if item.startdate is not None and item.duedate is not None else "   "
+		print ('| {:2d} |  {} {!s:<30s}  {}  | {:10s}{:3s}{:11s} |'.format(num,cat,item.value[:30], imp, stdstr, dash, duestr))
+		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
+			print ('|    |          {!s:<28s}     | {:24s} |'.format(segment," "))
 	else:
-		print ('{:2d}  |  {} {!s:<35s}\t{}   | {}'.format(num,cat,item.value, imp, duestr))
+		print ('| {:2d} |  {} {!s:<30s}  {}  | {:11s} |'.format(num,cat,item.value[:30], imp, duestr))
+		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
+			print ('|    |          {!s:<28s}     | {:11s} |'.format(segment," "))
 			
 def rewrite(filename, data):
 	data.sort()

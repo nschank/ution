@@ -1,10 +1,10 @@
-#!python 3.4
+#!python
 import xml.etree.ElementTree as ET
 from enum import Enum
 
-PROGRAM_XML = "C:\\\\cygwin64\\\\home\\\\nschank\\\\mini\\\\utils\\\\shortcut\\\\programs.xml"
-SHORTCUT_XML = "C:\\\\cygwin64\\\\home\\\\nschank\\\\mini\\\\utils\\\\shortcut\\\\shortcut.xml"
-ALIAS_OUTPUT = "C:\\\\cygwin64\\\\home\\\\nschank\\\\mini\\\\utils\\\\shortcut\\\\.aliases"
+PROGRAM_XML = "/home/nschank/mini/utils/shortcut/programs.xml"
+SHORTCUT_XML = "/home/nschank/mini/utils/shortcut/shortcut.xml"
+ALIAS_OUTPUT = "/home/nschank/mini/utils/shortcut/.aliases"
 
 class Alias:
 	""" An Alias shortcut which can be run from the command line. """
@@ -131,9 +131,9 @@ def main():
 	with open(ALIAS_OUTPUT, "wb") as A:
 		for program in programTree:
 			for alias in program.aliases:
-				A.write(bytes(alias.build(program.location)+"\n","ascii"))
+				A.write((alias.build(program.location)+"\n").encode("ascii"))
 		for program in shortcuts:
 			for alias in program.aliases:
-				A.write(bytes(alias.build(program.location)+"\n","ascii"))
+				A.write((alias.build(program.location)+"\n").encode("ascii"))
 		
 main()
