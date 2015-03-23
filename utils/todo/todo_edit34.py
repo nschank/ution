@@ -1,4 +1,5 @@
 import argparse
+from argparse import Namespace
 import datetime
 from datetime import datetime, timedelta
 from dateutil import parser as dparse
@@ -6,166 +7,201 @@ from random import randint
 import re
 import sys
 import time
-	
-def getdata(filename):
-	with open(filename, 'r') as f:
-		return [line[:-1] for line in f.readlines()]
+import pickle
 
-def parse():
-	"""Parses command-line arguments using argparse and returns an object containing runtime information."""
-	parser = argparse.ArgumentParser(description='Allows for basic usage of a to-do list.')
-
-	parser.add_argument('filename', metavar='F', help='A file to be used as a to-do list. Should be newline-separated, with one item per line.')
-
-	parser.add_argument('categories', metavar='C', nargs='*', help='Categories within the todo list to consider specifically.')
+class TodoItem:
+	def __init__(self, value):
+		self.value = value
+		self.important = False
+		self.duedate = None
+		self.startdate = None
+		self.category = None
 	
-	parser.add_argument('-i', dest='important', action='store_true', help='Restricts todo to items marked important (with a ! or with a due date within two days).')
-	parser.add_argument('-s', dest='start', nargs='+', help='If adding: adds a start date to the added action. Does not print (except if verbose) until that date. Otherwise an error.')
-	parser.add_argument('-t', dest='time', nargs='+', help='If adding: adds a due date to the added action. If printing: only prints things due the given day or before. Otherwise an error.')
-	parser.add_argument('-v', dest='verbose', action='store_true', help='If adding: adds a due date to the added action. If printing: only prints things due the given day or before. Otherwise an error.')
-	
-	action_group = parser.add_mutually_exclusive_group()
-	action_group.add_argument('-a', dest='add', nargs='+', help='Adds the given item to the to-do list.')
-	action_group.add_argument('-g', dest='get', nargs='?', const=-1, type=int, help='Gets and prints the specified item from the to-do list. If no number, a random one. Does not remove it from the list.')
-	action_group.add_argument('-h', dest='hide', type=int, help='Hides the given index from the main list.')
-	action_group.add_argument('-n', dest='num', action='store_true', help='Gets and prints the number of items on the todo list.')
-	action_group.add_argument('-r', dest='rm', type=int, help='Removes the specified item (by index) from the list.')
-	
-	
-	
-	return parser.parse_args()
-	
-def rewrite(filename, data):
-	with open(filename, 'w') as f:
-		data.sort()
-		for line in data:
-			f.write(line + "\n")
-			
-def do_len(data, settings):
-	data = [item for item in data if check_after(item,datetime.today())]
-	if len(settings.categories) > 0:
-		data = [item for item in data if get_category(item) in settings.categories]
-
-	if settings.important:
-		if settings.time is not None:
-			print ("Warning: Importance and time have undefined union. Importance takes precedence.")
-		data = [item for item in data if check_important(item)]
-		print ("You have", len(data), "important things to do.")
-	elif settings.time:
-		duedate = parse_time(settings.time)
-		data = [item for item in data if check_before(item, duedate)]
-		print ("You have", len(data), "things to do by", duedate.strftime("%A %d %B"))
-	else:
-		print ("You have", len(data), "things to do.")
-
-def check_important(todo_item):
-	return '!' in todo_item or check_before(todo_item, datetime.today()+timedelta(days=2))
-
-def check_after(todo_item, startdate):
-	if '<' not in todo_item: return True
-	return dparse.parse(re.search(r'<(.*)>', todo_item).group(1)) < startdate
-
-def check_before(todo_item, duedate):
-	if '[' not in todo_item: return False
-	return dparse.parse(re.search(r'\[(.*)\]', todo_item).group(1)) <= duedate
-	
-def parse_time(timelist):
-	timestr = ' '.join(timelist)
-	return dparse.parse(timestr)
-
-def get_category(todo_item):
-	if ':' in todo_item:
-		return todo_item.partition(':')[0].lower().strip()
-	else: return None
-	
-def do_print(data, settings):
-	if settings.important and settings.time is not None:
-		print ("Warning: Importance and time have undefined union. Importance takes precedence.")
-	elif settings.time is not None:
-		duedate = parse_time(settings.time)
-		
-	for num,item in enumerate(data):
-		if settings.important and not check_important(item):
-			continue
-		elif not settings.important and settings.time is not None and not check_before(item,duedate):
-			continue
-		elif len(settings.categories) > 0 and get_category(item) not in settings.categories:
-			continue
-		elif not settings.verbose and not check_after(item,datetime.today()):
-			continue
+	def __lt__(self, other):
+		if self.category == other.category:
+			return self.value < other.value
+		elif self.category is None:
+			return False
+		elif other.category is None:
+			return True
 		else:
-			print (num, "\t", item)
+			return self.category < other.category
 			
-def do_get(data, settings):
-	if settings.important or len(settings.categories) > 0 or settings.time is not None:
-		print("Warning: Importance, time, and categories do not affect getting a specific item.")
-	if settings.get < 0 or settings.get >= len(data):
-		print("Error: Invalid index.")
-	else:
-		print (settings.get, "\t", data[settings.get])
-		
+			
+def check_before(todo_item, duedate):
+	return (todo_item.duedate is not None and todo_item.duedate <= duedate)
+	
+def check_important(todo_item):
+	return todo_item.important or check_before(todo_item, datetime.today()+timedelta(days=2))
+
+def check_past(todo_item):
+	return todo_item.startdate is None or todo_item.startdate <= datetime.today()
+	
+def do_add(data, settings):
+	cat = None
+	if len(settings.item) > 0 and settings.item[0][-1] == ':':
+		cat = settings.item[0][:-1].upper()
+		settings.item.pop(0)
+	item = TodoItem(' '.join(settings.item))
+	item.category = cat
+	if settings.important:
+		item.important = True
+	if settings.time is not None:
+		try:
+			item.duedate = datetime.today() if "today" in settings.time else dparse.parse(' '.join(settings.time))
+		except Exception:
+			item.duedate = None
+	if settings.start is not None:
+		try:
+			item.startdate = datetime.today() if "today" in settings.start else dparse.parse(' '.join(settings.start))
+		except Exception:
+			item.startdate = None
+	data.append(item)
+	data.sort()
+	do_print(data) 
+	rewrite(settings.filename, data)
+	
 def do_get_rand(olddata, settings):
 	data = olddata
 	if len(settings.categories) > 0:
-		data = [item for item in data if get_category(item) in settings.categories]
+		data = [item for item in data if (item.category in settings.categories or ("none" in settings.categories and item.category is None))]
 
 	if settings.important:
-		if settings.time is not None:
-			print ("Warning: Importance and time have undefined union. Importance takes precedence.")
-		data = [item for item in data if check_important(item)]
-	elif settings.time is not None:
-		duedate = parse_time(settings.time)
-		data = [item for item in data if check_before(item, duedate)]
-
+		data = [item for item in data if item.important]
+	if settings.time is not None:
+		try:
+			data = [item for item in data if check_before(item, dparse.parse(' '.join(settings.time)))]
+		except Exception:
+			print("Warning: time argument was improperly formatted.")
+			
 	if len(data) == 0:
 		print ("Error: no items found.")
 	else:
 		index = randint(0,len(data)-1)
-		print (olddata.index(data[index]), "\t", data[index])
-
-def do_add(data, settings):
-	if len(settings.categories) > 0:
-		print("Warning: Categories are ignored when adding.")
-	add = ' '.join(settings.add)
-	if settings.important:
-		add = add + " ! "
-	if settings.time is not None:
-		add = add + parse_time(settings.time).strftime("\t[%A %d %B]")
-	if settings.start is not None:
-		add = add + parse_time(settings.start).strftime("\t<%A %d %B>")
-	data.append(add)
+		print("Random item:")
+		print_item(data[index], olddata.index(data[index]))
+		
+def do_hide(data, settings):
+	settings.indices.sort()
+	settings.indices.reverse()
+	for element in settings.indices:
+		try:
+			if data[element].startdate is None:
+				data[element].startdate = datetime.today()
+			data[element].startdate = data[element].startdate+timedelta(days=7)
+			if data[element].duedate is not None and data[element].startdate > data[element].duedate-timedelta(days=3):
+				data[element].startdate = data[element].duedate-timedelta(days=3)
+		except Exception:
+			print ('Failed to hide item', element)
+	print ("\nResult:")
+	do_print(data)
 	rewrite(settings.filename, data)
 	
-def do_rm(data, settings):
-	if len(settings.categories) > 0:
-		print("Warning: Categories are ignored when removing.")
-	if settings.important:
-		print("Warning: Importance is ignored when removing.")
+def do_print(data, settings=Namespace(time=None,important=False, categories=[], verbose=False)):
+	duedate = None
 	if settings.time is not None:
-		print("Warning: Time is ignored when removing.")
-	if settings.rm < 0 or settings.rm >= len(data):
-		print("Error: Removing invalid index.")
+		try:
+			duedate = datetime.today() if "today" in settings.time else dparse.parse(' '.join(settings.time))
+		except Exception:
+			print("Warning: time argument was improperly formatted.")
+	
+	printed = False
+	if settings.verbose:
+		print ('{:2s}  |  {:>5s} {!s:<35s}\t{} | {:^13s}{}'.format(" #","CAT ","ITEM", "IMP", "START", "DUE"))
+		print ('{:-^90s}'.format(""))
 	else:
-		print("Removing item", data[settings.rm])
-		data.pop(settings.rm)
-		rewrite(settings.filename, data)
+		print ('{:2s}  |  {:>5s} {!s:<35s}\t{} | {}'.format(" #","CAT ","ITEM", "IMP", "DUE"))
+		print ('{:-^80s}'.format(""))
+	for num,item in enumerate(data):
+		if (settings.important and not check_important(item)) or \
+			(duedate is not None and not check_before(item,duedate)) or \
+			(len(settings.categories) > 0 and \
+				item.category not in settings.categories and not \
+				("none" in settings.categories and item.category is None)) or \
+			(not settings.verbose and not check_past(item)):
+				continue
+		else:
+			printed = True
+			print_item(item,num, settings.verbose)
+	if not printed:
+		print ('{:^85s}'.format(" empty "))
+	
+def do_rm(data, settings):
+	settings.indices.sort()
+	settings.indices.reverse()
+	for element in settings.indices:
+		try:
+			print ('Removing item', data.pop(element).value)
+		except Exception:
+			print ('Failed to remove item', element)
+	print ("\nResult:")
+	do_print(data)
+	rewrite(settings.filename, data)
+	
+def getdata(filename):
+	with open(filename, 'rb') as f:
+		try:
+			return pickle.load(f)
+		except Exception:
+			return []
+			
+def print_item(item, num, verbose=False):
+	duestr = item.duedate.strftime("%a %d %b") if item.duedate is not None else ""
+	imp = '!' if item.important else ' '
+	cat = "{!s:<4s}".format(item.category.upper())+':' if item.category is not None else "     "
+	
+	if verbose:
+		stdstr = item.startdate.strftime("%a %d %b - ") if item.startdate is not None else ""
+		print ('{:2d}  |  {} {!s:<35s}\t{}   | {:^13s}{}'.format(num,cat,item.value, imp, stdstr, duestr))
+	else:
+		print ('{:2d}  |  {} {!s:<35s}\t{}   | {}'.format(num,cat,item.value, imp, duestr))
+			
+def rewrite(filename, data):
+	data.sort()
+	with open(filename, 'wb') as f:
+		pickle.dump(data, f)
+
+def parse():
+	"""Parses command-line arguments using argparse and returns an object containing runtime information."""
+	parser = argparse.ArgumentParser(description='Allows for basic usage of a to-do list.')
+	parser.add_argument('filename', metavar='F', help='A file to be used as a to-do list. Should be newline-separated, with one item per line.')
+	subparsers = parser.add_subparsers(help='sub-command help')
+	
+	parser_add = subparsers.add_parser('add', help='Adds an item to the todo list.')
+	parser_add.add_argument('item', nargs='+', help='The item to add.')
+	parser_add.add_argument('-i', dest='important', action='store_true', default=False, help='Marks the added argument as important.')
+	parser_add.add_argument('-s', dest='start', nargs='+', help='Adds a start date to the added action. Does not print (except if verbose) until that date.')
+	parser_add.add_argument('-t', dest='time', nargs='+', help='Adds a due date to the added action.')
+	parser_add.set_defaults(func=do_add)
+	
+	parser_get = subparsers.add_parser('rand', help='Gets and prints a random item from the to-do list. Does not remove it from the list.')
+	parser_get.add_argument('-i', dest='important', action='store_true', help='Gets only important items.')
+	parser_get.add_argument('-t', dest='time', nargs='+', help='Gets items due before the given date.')
+	parser_get.add_argument('-v', dest='verbose', action='store_true', help='Gets items which may not have started yet.')
+	parser_get.add_argument('categories', metavar='C', nargs='*', help='Categories within the todo list to get from specifically.')
+	parser_get.set_defaults(func=do_get_rand)
+	
+	parser_stat = subparsers.add_parser('print', help='Prints all items which are visible.')
+	parser_stat.add_argument('-i', dest='important', action='store_true', help='Gets only important items.')
+	parser_stat.add_argument('-t', dest='time', nargs='+', help='Gets items due before the given date.')
+	parser_stat.add_argument('-v', dest='verbose', action='store_true', help='Gets items which may not have started yet.')
+	parser_stat.add_argument('categories', metavar='C', nargs='*', help='Categories within the todo list to get from specifically.')
+	parser_stat.set_defaults(func=do_print)
+	
+	parser_rm = subparsers.add_parser('rm', help='Removes an item from the list.')
+	parser_rm.add_argument('indices', type=int, nargs='+', help='The indices of items in the list to remove.')
+	parser_rm.set_defaults(func=do_rm)
+	
+	parser_hide = subparsers.add_parser('hide', help='Hides an item from the list for up to one week.')
+	parser_hide.add_argument('indices', type=int, nargs='+', help='The indices of items in the list to hide.')
+	parser_hide.set_defaults(func=do_hide)
+	
+	return parser.parse_args()
 
 def main():
 	settings = parse()
-	data = getdata(settings.filename)
-	settings.categories = [category.lower() for category in settings.categories]
-	
-	if settings.num: 			 	# We are getting the length
-		do_len(data, settings)
-	elif settings.get == -1: 		# We are printing a random value
-		do_get_rand(data, settings)
-	elif settings.get is not None:	# We are printing a specific value
-		do_get(data, settings)
-	elif settings.add is not None: 	# We are adding a value
-		do_add(data, settings)
-	elif settings.rm is not None: 	# We are removing by index
-		do_rm(data, settings)
+	if hasattr(settings, 'func'):
+		settings.func(getdata(settings.filename), settings)
 	else:
-		do_print(data, settings)
-
+		print("Try 'python todo_edit34.py --help'")
 main()
