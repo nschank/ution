@@ -29,7 +29,7 @@ class TodoItem:
 			
 			
 def check_before(todo_item, duedate):
-	return (todo_item.duedate is not None and todo_item.duedate <= duedate)
+	return (todo_item.duedate is not None and todo_item.duedate <= duedate) or (todo_item.duedate is None and (todo_item.startdate is None or todo_item.startdate <= duedate))
 	
 def check_important(todo_item):
 	return todo_item.important or check_before(todo_item, datetime.today()+timedelta(days=2))
@@ -61,6 +61,42 @@ def do_add(data, settings):
 	do_print(data) 
 	rewrite(settings.filename, data)
 	
+def do_edit(data, settings):
+	if settings.index < 0 or settings.index >= len(data):
+		print ("No item of that index")
+		return
+	if settings.category is not None:
+		if len(settings.category) == 0:
+			data[settings.index].category = None
+		else:
+			data[settings.index].category = settings.category[0]
+	if settings.important:
+		data[settings.index].important = True
+	if settings.unimportant:
+		data[settings.index].important = False
+	if settings.start is not None:
+		try:
+			if len(settings.start) == 0:
+				data[settings.index].startdate = None
+			else:
+				data[settings.index].startdate = datetime.today() if "today" in settings.start else dparse.parse(' '.join(settings.start))
+		except Exception:
+			data[settings.index].startdate = None
+	if settings.time is not None:
+		try:
+			if len(settings.time) == 0:
+				data[settings.index].duedate = None
+			else:
+				data[settings.index].duedate = datetime.today() if "today" in settings.time else dparse.parse(' '.join(settings.time))
+		except Exception:
+			data[settings.index].duedate = None
+	if settings.item is not None:
+		data[settings.index].value = ' '.join(settings.item)
+	
+	data.sort()
+	do_print(data)
+	rewrite(settings.filename, data)
+	
 def do_get_rand(olddata, settings):
 	data = olddata
 	if len(settings.categories) > 0:
@@ -88,11 +124,11 @@ def do_hide(data, settings):
 		try:
 			if data[element].startdate is None:
 				data[element].startdate = datetime.today()
-			data[element].startdate = data[element].startdate+timedelta(days=7)
+			data[element].startdate = data[element].startdate+timedelta(days=3)
 			if data[element].duedate is not None and data[element].startdate > data[element].duedate-timedelta(days=3):
 				data[element].startdate = data[element].duedate-timedelta(days=3)
 		except Exception:
-			print ('Failed to hide item', element)
+			print ('Failed to hide item' + element)
 	print ("\nResult:")
 	do_print(data)
 	rewrite(settings.filename, data)
@@ -142,9 +178,9 @@ def do_rm(data, settings):
 	settings.indices.reverse()
 	for element in settings.indices:
 		try:
-			print ('Removing item', data.pop(element).value)
+			print ('Removing item ' + data.pop(element).value)
 		except Exception:
-			print ('Failed to remove item', element)
+			print ('Failed to remove item ' + element)
 	print ("\nResult:")
 	do_print(data)
 	rewrite(settings.filename, data)
@@ -211,6 +247,17 @@ def parse():
 	parser_hide = subparsers.add_parser('hide', help='Hides an item from the list for up to one week.')
 	parser_hide.add_argument('indices', type=int, nargs='+', help='The indices of items in the list to hide.')
 	parser_hide.set_defaults(func=do_hide)
+	
+	parser_edit = subparsers.add_parser('edit', help='Edits an item on the todo list.')
+	parser_edit.add_argument('index', type=int, help='The index of the item to edit.')
+	parser_edit.add_argument('-c', dest='category', nargs='*', help='Adds or edits the category of the specified action. If no argument is given, removes the category.')
+	edit_imp = parser_edit.add_mutually_exclusive_group()
+	edit_imp.add_argument('-i', dest='important', action='store_true', default=False, help='Marks the argument as important.')
+	edit_imp.add_argument('-n', dest='unimportant', action='store_true', default=False, help='Marks the added argument as not important.')
+	parser_edit.add_argument('-s', dest='start', nargs='*', help='Adds or edits a start date to the specified action. If no argument is given, removes the start date.')
+	parser_edit.add_argument('-t', dest='time', nargs='*', help='Adds or edits a due date to the specified action. If no argument is given, removes the due date.')
+	parser_edit.add_argument('-v', dest='item', nargs='+', help='Sets the title of the specified action.')
+	parser_edit.set_defaults(func=do_edit)
 	
 	return parser.parse_args()
 
