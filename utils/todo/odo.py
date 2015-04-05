@@ -16,6 +16,7 @@ class TodoItem:
 		self.duedate = None
 		self.startdate = None
 		self.category = None
+		
 	
 	def __lt__(self, other):
 		if self.category == other.category:
@@ -35,8 +36,21 @@ def check_important(todo_item):
 	return todo_item.important or check_before(todo_item, datetime.today()+timedelta(days=2))
 
 def check_past(todo_item):
-	return todo_item.startdate is None or todo_item.startdate <= datetime.today()
+	return todo_item.startdate is None or todo_item.startdate.date() <= datetime.today().date()
 	
+def color(todo_item):
+	if todo_item.duedate is None:
+		return ''
+	if todo_item.duedate.date() < datetime.today().date():
+		return '\033[31m'
+	if todo_item.duedate.date() == datetime.today().date():
+		return '\033[31;1m'
+	if todo_item.duedate.date() <= datetime.today().date() + timedelta(days=2):
+		return '\033[33m'
+	if todo_item.startdate.date() == datetime.today().date():
+		return '\033[32m'
+	return ''
+		
 def do_add(data, settings):
 	cat = None
 	if len(settings.item) > 0 and settings.item[0][-1] == ':':
@@ -194,17 +208,17 @@ def getdata(filename):
 			
 def print_item(item, num, verbose=False):
 	duestr = item.duedate.strftime("%a %d %b") if item.duedate is not None else ""
-	imp = '*' if item.important else ' '
+	imp = '\033[41m!\033[0m' if item.important else ' '
 	cat = "{!s:>4s}".format(item.category.upper())+':' if item.category is not None else "     "
 	
 	if verbose:
 		stdstr = item.startdate.strftime("%a %d %b") if item.startdate is not None else ""
 		dash = " - " if item.startdate is not None and item.duedate is not None else "   "
-		print ('| {:2d} |  {} {!s:<30s}  {}  | {:10s}{:3s}{:11s} |'.format(num,cat,item.value[:30], imp, stdstr, dash, duestr))
+		print ('| {:2d} |  {} {} {!s:<30s}\033[0m  {}  | {:10s}{:3s}{:11s} |'.format(num,color(item), cat,item.value[:30], imp, stdstr, dash, duestr))
 		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
 			print ('|    |          {!s:<28s}     | {:24s} |'.format(segment," "))
 	else:
-		print ('| {:2d} |  {} {!s:<30s}  {}  | {:11s} |'.format(num,cat,item.value[:30], imp, duestr))
+		print ('| {:2d} |  {} {} {!s:<30s}\033[0m  {}  | {:11s} |'.format(num,color(item),cat,item.value[:30], imp, duestr))
 		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
 			print ('|    |          {!s:<28s}     | {:11s} |'.format(segment," "))
 			
