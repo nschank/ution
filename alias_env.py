@@ -2,9 +2,9 @@
 import xml.etree.ElementTree as ET
 from enum import Enum
 
-PROGRAM_XML = "/home/nschank/mini/utils/shortcut/programs.xml"
-SHORTCUT_XML = "/home/nschank/mini/utils/shortcut/shortcut.xml"
-ALIAS_OUTPUT = "/home/nschank/mini/utils/shortcut/.aliases"
+PROGRAM_XML = "/home/nschank/ution/.private/programs.xml"
+SHORTCUT_XML = "/home/nschank/ution/.private/shortcut.xml"
+ALIAS_OUTPUT = "/home/nschank/ution/.private/.aliases"
 
 class Alias:
 	""" An Alias shortcut which can be run from the command line. """

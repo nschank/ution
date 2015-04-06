@@ -1,4 +1,3 @@
-Mini-Projects
+Ution
 =============
-
-For little projects that don't really require their own repository
+Command line utilities I make for myself!
