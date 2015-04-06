@@ -16,7 +16,6 @@ class TodoItem:
 		self.duedate = None
 		self.startdate = None
 		self.category = None
-		
 	
 	def __lt__(self, other):
 		if self.category == other.category:
@@ -158,13 +157,13 @@ def do_print(data, settings=Namespace(time=None,important=False, categories=[], 
 	
 	printed = False
 	if settings.verbose:
-		print ('+====+' + '='*43 + '+' + '='*26 + '+')
-		print ('| {:2s} |  {:>5s} {!s:<30s} {} | {:^11s}  {:^11s} |'.format(" #","CAT ","ITEM", "IMP", "START", "DUE"))
-		print ('+====+' + '='*43 + '+' + '='*26 + '+')
+		print ('+=====+' + '='*43 + '+' + '='*26 + '+')
+		print ('| {:3s} |  {:>5s} {!s:<30s} {} | {:^11s}  {:^11s} |'.format(" # ","CAT ","ITEM", "IMP", "START", "DUE"))
+		print ('+=====+' + '='*43 + '+' + '='*26 + '+')
 	else:
-		print ('+====+' + '='*43 + '+' + '='*13 + '+')
-		print ('| {:2s} |  {:>5s} {!s:<30s} {} | {:^11s} |'.format(" #","CAT ","ITEM", "IMP", "DUE"))
-		print ('+====+' + '='*43 + '+' + '='*13 + '+')
+		print ('+=====+' + '='*43 + '+' + '='*13 + '+')
+		print ('| {:3s} |  {:>5s} {!s:<30s} {} | {:^11s} |'.format(" # ","CAT ","ITEM", "IMP", "DUE"))
+		print ('+=====+' + '='*43 + '+' + '='*13 + '+')
 	for num,item in enumerate(data):
 		if (settings.important and not check_important(item)) or \
 			(duedate is not None and not check_before(item,duedate)) or \
@@ -177,15 +176,14 @@ def do_print(data, settings=Namespace(time=None,important=False, categories=[], 
 			printed = True
 			print_item(item,num, settings.verbose)
 	
-		
 	if settings.verbose:
 		if not printed:
-			print ('| {:^73s} |'.format(""))
-		print ('+' + '='*75 + '+')
+			print ('| {:^74s} |'.format(""))
+		print ('+' + '='*76 + '+')
 	else:
 		if not printed:
-			print ('| {:^60s} |'.format(""))
-		print ('+' + '='*62 + '+')
+			print ('| {:^61s} |'.format(""))
+		print ('+' + '='*63 + '+')
 	
 def do_rm(data, settings):
 	settings.indices.sort()
@@ -214,13 +212,13 @@ def print_item(item, num, verbose=False):
 	if verbose:
 		stdstr = item.startdate.strftime("%a %d %b") if item.startdate is not None else ""
 		dash = " - " if item.startdate is not None and item.duedate is not None else "   "
-		print ('| {:2d} |  {} {} {!s:<30s}\033[0m  {}  | {:10s}{:3s}{:11s} |'.format(num,color(item), cat,item.value[:30], imp, stdstr, dash, duestr))
+		print ('| {:3d} |  {} {} {!s:<30s}\033[0m {}  | {:10s}{:3s}{:11s} |'.format(num,color(item), cat,item.value[:30], imp, stdstr, dash, duestr))
 		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
-			print ('|    |          {!s:<28s}     | {:24s} |'.format(segment," "))
+			print ('|    |          {!s:<28s}      | {:24s} |'.format(segment," "))
 	else:
-		print ('| {:2d} |  {} {} {!s:<30s}\033[0m  {}  | {:11s} |'.format(num,color(item),cat,item.value[:30], imp, duestr))
+		print ('| {:3d} |  {} {} {!s:<30s}\033[0m {}  | {:11s} |'.format(num,color(item),cat,item.value[:30], imp, duestr))
 		for segment in [item.value[i:min(len(item.value),i+28)] for i in range(30,len(item.value),28)]:
-			print ('|    |          {!s:<28s}     | {:11s} |'.format(segment," "))
+			print ('|    |          {!s:<28s}      | {:11s} |'.format(segment," "))
 			
 def rewrite(filename, data):
 	data.sort()
